@@ -1,95 +1,93 @@
-import { useState, useEffect } from 'react'
-import { io } from 'socket.io-client'
+import './index.css';
+import Header from './components/Header';
+import MetricCards from './components/MetricCards';
+import VenueMap from './components/VenueMap';
+import ThermalPanel from './components/ThermalPanel';
+import AlertsPanel from './components/AlertsPanel';
+import ActivityFeed from './components/ActivityFeed';
+import ActionPanel from './components/ActionPanel';
 
-// Connect to backend (mock URL for development)
-const socket = io('http://localhost:5000')
+export default function App() {
+  return (
+    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', display: 'flex', flexDirection: 'column' }}>
+      {/* Scanline overlay */}
+      <div className="scanline-overlay" />
 
-function App() {
-    const [alerts, setAlerts] = useState([])
-    const [heatmap, setHeatmap] = useState({})
+      {/* HEADER */}
+      <Header systemStatus="ELEVATED" lastUpdated="17:04:12" />
 
-    useEffect(() => {
-        socket.on('connect', () => {
-            console.log('Connected to Backend!')
-        })
+      {/* METRIC CARDS */}
+      <MetricCards />
 
-        socket.on('new_alert', (data) => {
-            setAlerts(prev => [data, ...prev].slice(0, 5))
-        })
+      {/*
+        MAIN GRID
+        ─────────────────────────────────────────────
+        LEFT (flex 1):  VenueMap (top, ~58%) + ThermalPanel (bottom, ~42%) stacked
+        RIGHT (320px):  AlertsPanel (scrollable) + ActivityFeed (dropdown) + ActionPanel
+      */}
+      <div style={{
+        flex: 1,
+        display: 'grid',
+        gridTemplateColumns: '1fr 330px',
+        gap: '14px',
+        padding: '14px 24px 24px',
+        minHeight: 0,
+      }}>
 
-        socket.on('heatmap_data', (data) => {
-            setHeatmap(data)
-        })
-
-        return () => {
-            socket.off('connect')
-            socket.off('new_alert')
-            socket.off('heatmap_data')
-        }
-    }, [])
-
-    return (
-        <div className="min-h-screen p-8 bg-black">
-            <header className="mb-8 border-b border-gray-800 pb-6">
-                <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400">
-                    CrowdWatch AI Dashboard
-                </h1>
-                <p className="text-gray-400 mt-2 text-lg">Real-time venue monitoring & anomaly detection</p>
-            </header>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Heatmap Panel */}
-                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-[0_0_40px_rgba(0,0,0,0.5)]">
-                    <h2 className="text-2xl font-semibold mb-6 text-cyan-400 flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full bg-cyan-400 animate-pulse"></span>
-                        Live Density (Mock Data)
-                    </h2>
-                    <div className="p-6 bg-gray-800/50 rounded-xl border border-gray-700/50 flex items-center justify-between">
-                        <div className="flex flex-col">
-                            <span className="text-gray-400 text-sm tracking-wider uppercase mb-1">Monitored Zone</span>
-                            <span className="text-xl text-white font-medium">{heatmap.zone || 'Scanning...'}</span>
-                        </div>
-                        <div className="flex flex-col items-end">
-                            <span className="text-gray-400 text-sm tracking-wider uppercase mb-1">Density Level</span>
-                            <span className={`text-4xl font-bold ${heatmap.density > 80 ? 'text-red-500' : 'text-emerald-400'}`}>
-                                {heatmap.density || 0}%
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Alerts Panel */}
-                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-[0_0_40px_rgba(0,0,0,0.5)] flex flex-col">
-                    <h2 className="text-2xl font-semibold mb-6 text-red-400 flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full bg-red-500"></span>
-                        Active Alerts
-                    </h2>
-                    <div className="space-y-4 overflow-y-auto flex-1 pr-2">
-                        {alerts.length === 0 ? (
-                            <div className="h-full flex items-center justify-center text-gray-500 italic">
-                                No active anomalies detected
-                            </div>
-                        ) : (
-                            alerts.map((alert, idx) => (
-                                <div key={idx} className="p-5 border-l-4 border-red-500 bg-red-500/10 rounded-r-xl shadow-sm transition-all hover:bg-red-500/20">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <strong className="text-red-400 text-lg tracking-wide">{alert.type.replace('_', ' ')}</strong>
-                                        <span className="text-xs px-2 py-1 bg-red-500/20 text-red-300 rounded-full border border-red-500/30">
-                                            {alert.severity}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-end mt-3">
-                                        <span className="text-gray-300 text-sm">Location: <span className="text-white font-medium">{alert.zone}</span></span>
-                                        <span className="text-gray-400 text-sm">Density peak: {alert.density}%</span>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
-            </div>
+        {/* ── LEFT COLUMN: Map + Thermal stacked ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', minHeight: 0 }}>
+          {/* Venue map — hero, taller */}
+          <div style={{ flex: '0 0 58%', minHeight: '360px' }}>
+            <VenueMap />
+          </div>
+          {/* Thermal camera — same width, below */}
+          <div style={{ flex: 1, minHeight: '220px' }}>
+            <ThermalPanel />
+          </div>
         </div>
-    )
-}
 
-export default App
+        {/* ── RIGHT COLUMN: Alerts + Feed dropdown + Actions ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', minHeight: 0, overflow: 'auto' }}>
+          {/* Live alerts — scrollable, takes most of the right column */}
+          <div style={{ flex: 1, minHeight: '200px' }}>
+            <AlertsPanel />
+          </div>
+
+          {/* Activity feed — collapsible dropdown */}
+          <ActivityFeed defaultOpen={false} />
+
+          {/* Authority actions — sits below feed */}
+          <ActionPanel />
+        </div>
+      </div>
+
+      {/* FOOTER */}
+      <footer style={{
+        borderTop: '1px solid var(--border-primary)',
+        background: 'var(--bg-secondary)',
+        padding: '7px 24px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        flexShrink: 0,
+      }}>
+        <div style={{ display: 'flex', gap: '20px' }}>
+          {[
+            { l: 'Venue', v: 'Indira Gandhi Stadium' },
+            { l: 'Event', v: 'National Sports Finals 2026' },
+            { l: 'Capacity', v: '25,000' },
+          ].map(({ l, v }) => (
+            <div key={l} style={{ display: 'flex', gap: '5px' }}>
+              <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{l}:</span>
+              <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: '500' }}>{v}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--neon-green)' }} className="blink" />
+          <span style={{ fontSize: '10px', color: 'var(--neon-green)', letterSpacing: '1px' }}>
+            CrowdSafe AI v3.2 · ALL SYSTEMS OPERATIONAL
+          </span>
+        </div>
+      </footer>
+    </div>
+  );
+}
