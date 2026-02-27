@@ -41,6 +41,8 @@ from zone_manager      import ZoneManager
 from flow_tracker      import FlowTracker
 from heatmap_generator import HeatmapGenerator
 from backend_publisher import BackendPublisher
+from anomaly_detector  import AnomalyDetector
+from risk_scorer       import RiskScorer
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -123,6 +125,8 @@ class CrowdSafePipeline:
         self.zone_mgr   = ZoneManager()
         self.flow       = FlowTracker()
         self.heatmap    = HeatmapGenerator()
+        self.anomaly    = AnomalyDetector()
+        self.risk       = RiskScorer()
         self.publisher  = BackendPublisher(mode=publisher_mode)
 
         self._frame_interval = 1.0 / config.TARGET_FPS
@@ -208,17 +212,36 @@ class CrowdSafePipeline:
         self.heatmap.update(centroids)
         heatmap_matrix = self.heatmap.get_matrix()
 
-        # 6. Build output JSON dict ----------------------------------------
+        # 6. Anomaly detection (Module 5) ----------------------------------
+        anomalies = self.anomaly.detect(
+            frame,
+            detections=detections,
+            flow_direction=flow_direction,
+            zone_data=zone_data,
+        )
+
+        # 7. Risk scoring (Module 5) ---------------------------------------
+        risk = self.risk.score(
+            total_people=len(detections),
+            zone_data=zone_data,
+            anomalies=anomalies,
+            flow_direction=flow_direction,
+        )
+
+        # 8. Build output JSON dict ----------------------------------------
         analysis: Dict[str, Any] = {
             "timestamp":      datetime.now(IST).isoformat(),
             "total_people":   len(detections),
             "zones":          zone_data,
             "flow_direction": flow_direction,
             "heatmap_matrix": heatmap_matrix,
+            "anomalies":      anomalies,
+            "risk":           risk,
         }
 
         logger.info(
-            f"Frame processed | people={len(detections)} | flow={flow_direction}"
+            f"Frame processed | people={len(detections)} | flow={flow_direction} "
+            f"| anomalies={len(anomalies)} | risk={risk['level']}({risk['score']})"
         )
         return analysis
 
@@ -244,10 +267,30 @@ class CrowdSafePipeline:
         # Heatmap overlay
         vis = self.heatmap.render_overlay(vis)
 
+        # Anomaly overlays (Module 5)
+        vis = self.anomaly.draw_anomalies(vis, analysis.get("anomalies", []))
+
+        # Risk score banner (Module 5)
+        risk   = analysis.get("risk", {})
+        level  = risk.get("level", "SAFE")
+        score  = risk.get("score", 0)
+        r_color= self.risk.level_color(level)
+        risk_txt = f"RISK: {level} ({score}/100)"
+        (rw, rh), _ = cv2.getTextSize(risk_txt, cv2.FONT_HERSHEY_SIMPLEX, 0.65, 2)
+        # Draw filled pill background
+        cv2.rectangle(vis,
+                      (config.FRAME_WIDTH - rw - 18, 4),
+                      (config.FRAME_WIDTH - 4,       rh + 16),
+                      r_color, -1)
+        cv2.putText(vis, risk_txt,
+                    (config.FRAME_WIDTH - rw - 12, rh + 8),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 0, 0), 2, cv2.LINE_AA)
+
         # Status banner
         banner = (
             f"People: {analysis['total_people']}  "
             f"Flow: {analysis['flow_direction']}  "
+            f"Anomalies: {len(analysis.get('anomalies', []))}  "
             f"FPS cap: {config.TARGET_FPS}"
         )
         cv2.putText(vis, banner, (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 1)

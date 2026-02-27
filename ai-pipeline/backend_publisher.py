@@ -76,6 +76,9 @@ class BackendPublisher:
         Args:
             data: Structured crowd analysis dict (JSON-serialisable).
         """
+        if self.mode == "none":
+            return  # Silent mode – used for local testing without a backend
+
         if self.mode in ("fastapi", "both"):
             self.send_to_fastapi(data)
 
