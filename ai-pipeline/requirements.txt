@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+pika
+opencv-python
+torch
+ultralytics
+requests
