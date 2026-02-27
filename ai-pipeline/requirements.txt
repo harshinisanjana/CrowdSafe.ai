@@ -1,7 +1,17 @@
-fastapi
-uvicorn
-pika
-opencv-python
-torch
-ultralytics
-requests
+# CrowdSafe AI – Python AI Pipeline Dependencies
+
+# Core computer vision & ML
+ultralytics>=8.0         # YOLOv8 (includes torch as a dependency)
+opencv-python>=4.8       # Video capture, image processing, zone drawing
+numpy>=1.24              # Array operations, grid maths
+
+# Flow tracking – centroid-distance matching
+scipy>=1.11              # scipy.spatial.distance.cdist
+
+# Backend transport – FastAPI server mode
+fastapi>=0.110
+uvicorn[standard]>=0.29
+requests>=2.31           # HTTP POST to FastAPI / Node backend
+
+# Backend transport – RabbitMQ mode
+pika>=1.3
