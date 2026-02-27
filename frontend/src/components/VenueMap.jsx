@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
 
 // Named zones — Zone A (North Entry), Zone B (Main Floor), Zone C (Stage), Zone D (South)
 const ZONES = [
@@ -6,45 +7,24 @@ const ZONES = [
         id: 'A', label: 'Zone A', sublabel: 'North Entry',
         x: 5, y: 5, w: 42, h: 40,
         risk: 'critical', crowd: 6420,
-        // thermal hotspots inside this zone [cx, cy, radius, intensity 0-1]
-        hotspots: [
-            { cx: 18, cy: 15, r: 12, intensity: 0.95 },
-            { cx: 30, cy: 22, r: 9, intensity: 0.78 },
-            { cx: 10, cy: 32, r: 7, intensity: 0.62 },
-        ],
         gates: [{ id: 'G1', x: 3, y: 25, status: 'restricted', label: 'Gate 1' }, { id: 'G2', x: 26, y: 2, status: 'open', label: 'Gate 2' }],
     },
     {
         id: 'B', label: 'Zone B', sublabel: 'Main Floor',
         x: 50, y: 5, w: 45, h: 40,
         risk: 'warning', crowd: 5210,
-        hotspots: [
-            { cx: 62, cy: 18, r: 10, intensity: 0.70 },
-            { cx: 82, cy: 25, r: 8, intensity: 0.55 },
-            { cx: 70, cy: 30, r: 6, intensity: 0.48 },
-        ],
         gates: [{ id: 'G3', x: 97, y: 20, status: 'open', label: 'Gate 3' }],
     },
     {
         id: 'C', label: 'Zone C', sublabel: 'Stage Area',
         x: 5, y: 50, w: 42, h: 45,
         risk: 'safe', crowd: 3870,
-        hotspots: [
-            { cx: 15, cy: 62, r: 8, intensity: 0.38 },
-            { cx: 32, cy: 72, r: 6, intensity: 0.30 },
-            { cx: 22, cy: 85, r: 5, intensity: 0.22 },
-        ],
         gates: [{ id: 'G4', x: 3, y: 72, status: 'open', label: 'Gate 4' }],
     },
     {
         id: 'D', label: 'Zone D', sublabel: 'South Exit',
         x: 50, y: 50, w: 45, h: 45,
         risk: 'warning', crowd: 2970,
-        hotspots: [
-            { cx: 65, cy: 65, r: 7, intensity: 0.60 },
-            { cx: 85, cy: 78, r: 9, intensity: 0.72 },
-            { cx: 73, cy: 85, r: 5, intensity: 0.45 },
-        ],
         gates: [{ id: 'G5', x: 97, y: 75, status: 'open', label: 'Gate 5' }, { id: 'G6', x: 72, y: 97, status: 'open', label: 'Gate 6' }],
     },
 ];
@@ -70,14 +50,32 @@ const INCIDENT_COLORS = {
     medical: '#34c759',
 };
 
-// Thermal color for an intensity value (0..1)
-function thermalColor(intensity) {
-    // cold(blue) → cool(cyan) → warm(green) → hot(yellow) → critical(red)
-    if (intensity > 0.85) return `rgba(255, 30, 50, ${0.5 + intensity * 0.4})`;
-    if (intensity > 0.70) return `rgba(255, 120, 20, ${0.45 + intensity * 0.35})`;
-    if (intensity > 0.55) return `rgba(255, 210, 10, ${0.40 + intensity * 0.3})`;
-    if (intensity > 0.35) return `rgba(60, 210, 80, ${0.35 + intensity * 0.25})`;
-    return `rgba(20, 140, 255, ${0.30 + intensity * 0.2})`;
+// Thermal color gradient scale for heatmap
+const COLOR_STOPS = [
+    { t: 0.00, r: 0, g: 0, b: 0 },
+    { t: 0.10, r: 0, g: 0, b: 130 },
+    { t: 0.22, r: 0, g: 60, b: 220 },
+    { t: 0.36, r: 0, g: 200, b: 220 },
+    { t: 0.50, r: 10, g: 210, b: 80 },
+    { t: 0.64, r: 220, g: 200, b: 10 },
+    { t: 0.78, r: 255, g: 110, b: 0 },
+    { t: 0.90, r: 255, g: 25, b: 25 },
+    { t: 1.00, r: 255, g: 240, b: 240 },
+];
+function thermalRGBA(v) {
+    const c = Math.max(0, Math.min(1, v));
+    let lo = COLOR_STOPS[0], hi = COLOR_STOPS[COLOR_STOPS.length - 1];
+    for (let i = 0; i < COLOR_STOPS.length - 1; i++) {
+        if (c >= COLOR_STOPS[i].t && c <= COLOR_STOPS[i + 1].t) {
+            lo = COLOR_STOPS[i]; hi = COLOR_STOPS[i + 1]; break;
+        }
+    }
+    const t = hi.t === lo.t ? 0 : (c - lo.t) / (hi.t - lo.t);
+    return [
+        Math.round(lo.r + t * (hi.r - lo.r)),
+        Math.round(lo.g + t * (hi.g - lo.g)),
+        Math.round(lo.b + t * (hi.b - lo.b)),
+    ];
 }
 
 const ZONE_BORDER = {
@@ -96,33 +94,181 @@ const ZONE_COLOR = {
     safe: 'var(--neon-green)',
 };
 
+const COLS = 10;
+const ROWS = 10;
+
 export default function VenueMap() {
     const [selected, setSelected] = useState(null);
     const [showFlow, setShowFlow] = useState(true);
     const [showThermal, setShowThermal] = useState(true);
     const [pulseTick, setPulseTick] = useState(0);
-    const [thermalAnim, setThermalAnim] = useState(0);
 
+    const canvasRef = useRef(null);
+    const matrixRef = useRef(new Float32Array(COLS * ROWS));
+    const animRef = useRef(null);
+    const [liveData, setLiveData] = useState(null);
+
+    // Pulse animation logic
     useEffect(() => {
         const t = setInterval(() => setPulseTick(p => p + 1), 1200);
         return () => clearInterval(t);
     }, []);
 
-    // Slowly animate thermal intensities
+    // 1. Fetch Heatmap Data
     useEffect(() => {
-        const t = setInterval(() => setThermalAnim(a => a + 1), 2500);
-        return () => clearInterval(t);
+        const interval = setInterval(async () => {
+            try {
+                const res = await axios.get('http://localhost:8000/snapshot');
+                if (res.data) {
+                    setLiveData(res.data);
+                    if (res.data.heatmap_matrix) {
+                        const matrix2D = res.data.heatmap_matrix;
+                        const flat = new Float32Array(COLS * ROWS);
+                        let maxVal = 0;
+                        for (let r = 0; r < ROWS; r++) {
+                            for (let c = 0; c < COLS; c++) {
+                                const val = matrix2D[r][c] || 0;
+                                flat[r * COLS + c] = val;
+                                if (val > maxVal) maxVal = val;
+                            }
+                        }
+                        if (maxVal > 0) {
+                            for (let i = 0; i < flat.length; i++) {
+                                flat[i] /= maxVal;
+                            }
+                        }
+                        matrixRef.current = flat;
+                    }
+                }
+            } catch (err) { }
+        }, 1000);
+        return () => clearInterval(interval);
     }, []);
 
-    const selectedZone = ZONES.find(z => z.id === selected);
+    // 2. Render Heatmap onto background Canvas
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
 
-    // Compute animated hotspot intensity shift
-    function animatedIntensity(base, idx) {
-        const shift = Math.sin((thermalAnim + idx * 2.3) * 0.4) * 0.06;
-        return Math.min(1, Math.max(0.1, base + shift));
+        const buf = document.createElement('canvas');
+        buf.width = COLS;
+        buf.height = ROWS;
+        const bctx = buf.getContext('2d');
+
+        function draw() {
+            const W = canvas.width;
+            const H = canvas.height;
+            if (!W || !H) { animRef.current = requestAnimationFrame(draw); return; }
+
+            ctx.clearRect(0, 0, W, H);
+
+            if (showThermal) {
+                const grid = matrixRef.current;
+                const imgData = bctx.createImageData(COLS, ROWS);
+                for (let i = 0; i < COLS * ROWS; i++) {
+                    const v = grid[i];
+                    const [r, g, b] = thermalRGBA(v);
+                    const alpha = v <= 0.01 ? 0 : 200; // Fully transparent if empty so map shows through
+                    imgData.data[i * 4] = r;
+                    imgData.data[i * 4 + 1] = g;
+                    imgData.data[i * 4 + 2] = b;
+                    imgData.data[i * 4 + 3] = alpha;
+                }
+                bctx.putImageData(imgData, 0, 0);
+
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(buf, 0, 0, W, H);
+            }
+
+            animRef.current = requestAnimationFrame(draw);
+        }
+
+        animRef.current = requestAnimationFrame(draw);
+        return () => cancelAnimationFrame(animRef.current);
+    }, [showThermal]);
+
+    // Canvas resize observer
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        function sync() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+        }
+        const ro = new ResizeObserver(sync);
+        ro.observe(canvas.parentElement);
+        sync();
+        return () => ro.disconnect();
+    }, []);
+
+    // ── Dynamic live data mapping ──
+
+    // 1. Zones
+    const dynamicZones = ZONES.map(zone => {
+        let crowd = zone.crowd;
+        let risk = zone.risk;
+
+        if (liveData) {
+            // Distribute the total AI tracked count across zones proportionally as a demo mapping
+            const total = liveData.total_people || 0;
+            const globalRisk = liveData.risk_score || 0;
+
+            if (zone.id === 'A') { crowd = Math.round(total * 0.4); risk = globalRisk > 0.8 ? 'critical' : 'warning'; }
+            if (zone.id === 'B') { crowd = Math.round(total * 0.3); risk = globalRisk > 0.6 ? 'warning' : 'safe'; }
+            if (zone.id === 'C') { crowd = Math.round(total * 0.2); risk = 'safe'; }
+            if (zone.id === 'D') { crowd = Math.round(total * 0.1); risk = globalRisk > 0.9 ? 'warning' : 'safe'; }
+        }
+        return { ...zone, crowd, risk };
+    });
+
+    // 2. Incidents (Empty if no anomalies, otherwise parse them)
+    // If liveData is entirely missing, keep the defaults for demo purposes until connection.
+    let dynamicIncidents = INCIDENTS;
+    if (liveData) {
+        dynamicIncidents = [];
+        if (liveData.anomalies && liveData.anomalies.length > 0) {
+            liveData.anomalies.forEach((anom, idx) => {
+                // Map the anomaly types from the AI to map pins
+                let type = 'suspicious';
+                let icon = '?';
+                if (anom.type === 'running') { type = 'crush'; icon = '!!'; }
+                if (anom.type === 'falling') { type = 'medical'; icon = '+'; }
+
+                // Demo positions for anomalies since AI doesn't emit XY coords yet
+                const demoPos = [
+                    { cx: 18, cy: 15, zone: 'A' },
+                    { cx: 62, cy: 18, zone: 'B' },
+                    { cx: 85, cy: 78, zone: 'D' }
+                ];
+                const pos = demoPos[idx % demoPos.length];
+
+                dynamicIncidents.push({
+                    id: idx + 1,
+                    cx: pos.cx, cy: pos.cy,
+                    type, icon,
+                    label: `AI Alert: ${anom.type.toUpperCase()}`,
+                    zone: pos.zone
+                });
+            });
+        }
     }
 
-    const allHotspots = ZONES.flatMap(z => z.hotspots.map((h, i) => ({ ...h, zoneRisk: z.risk, idx: i })));
+    // 3. Flow Lines (Hide if very low crowds, otherwise show demo flows)
+    let dynamicFlows = FLOW_LINES;
+    if (liveData) {
+        dynamicFlows = [];
+        const total = liveData.total_people || 0;
+        if (total > 15) {
+            dynamicFlows.push({ id: 'f1', d: 'M 18,15 C 25,20 35,30 50,35', color: '#0a84ff', label: 'A→B redirect active' });
+        }
+        if (total > 30) {
+            dynamicFlows.push({ id: 'f2', d: 'M 65,18 C 60,35 55,50 50,60', color: '#34c759', label: 'B→D nominal flow' });
+        }
+    }
+
+    const selectedZone = dynamicZones.find(z => z.id === selected);
 
     return (
         <div className="glass-card" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -136,7 +282,7 @@ export default function VenueMap() {
                                 Live Venue Map
                             </span>
                             <span style={{ fontSize: '10px', color: 'var(--text-muted)', letterSpacing: '2px' }}>
-                                INDIRA GANDHI STADIUM
+                                LIVE AI CROWD TRACKING
                             </span>
                         </div>
                         <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
@@ -177,13 +323,19 @@ export default function VenueMap() {
 
             {/* ── Map area ── */}
             <div style={{ flex: 1, position: 'relative', overflow: 'hidden', padding: '12px' }}>
-                <div className="venue-map" style={{ position: 'absolute', inset: '12px', borderRadius: '8px', overflow: 'hidden' }}>
+                <div className="venue-map" style={{ position: 'absolute', inset: '12px', borderRadius: '8px', overflow: 'hidden', background: '#02050b' }}>
 
-                    {/* SVG: thermal blobs + flow lines + incidents + grid */}
+                    {/* Live AI Heatmap Canvas Background */}
+                    <canvas
+                        ref={canvasRef}
+                        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 1, pointerEvents: 'none', mixBlendMode: 'screen' }}
+                    />
+
+                    {/* SVG overlay for everything else */}
                     <svg
                         viewBox="0 0 100 100"
                         preserveAspectRatio="none"
-                        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 3 }}
+                        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 3, pointerEvents: 'none' }}
                     >
                         <defs>
                             {/* Glow filter */}
@@ -191,25 +343,6 @@ export default function VenueMap() {
                                 <feGaussianBlur stdDeviation="1.5" result="blur" />
                                 <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
                             </filter>
-                            {/* Soft glow for thermal */}
-                            <filter id="soft-glow">
-                                <feGaussianBlur stdDeviation="3" result="blur" />
-                                <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-                            </filter>
-                            {/* Radial gradients for each hotspot */}
-                            {showThermal && allHotspots.map((h, i) => {
-                                const intensity = animatedIntensity(h.intensity, i);
-                                const color = thermalColor(intensity);
-                                const colorOuter = thermalColor(intensity * 0.5);
-                                return (
-                                    <radialGradient key={i} id={`thermal-${i}`} cx="50%" cy="50%" r="50%">
-                                        <stop offset="0%" stopColor={color} stopOpacity="0.9" />
-                                        <stop offset="55%" stopColor={colorOuter} stopOpacity="0.5" />
-                                        <stop offset="100%" stopColor="transparent" stopOpacity="0" />
-                                    </radialGradient>
-                                );
-                            })}
-                            {/* Animated dash for flow lines */}
                             <style>{`
                 @keyframes svg-dash { to { stroke-dashoffset: -20; } }
                 .flow-line { animation: svg-dash 1.5s linear infinite; }
@@ -226,19 +359,8 @@ export default function VenueMap() {
                             </g>
                         ))}
 
-                        {/* Thermal blobs */}
-                        {showThermal && allHotspots.map((h, i) => (
-                            <ellipse
-                                key={i}
-                                cx={h.cx} cy={h.cy}
-                                rx={h.r * 1.3} ry={h.r}
-                                fill={`url(#thermal-${i})`}
-                                filter="url(#soft-glow)"
-                            />
-                        ))}
-
                         {/* Flow / movement lines */}
-                        {showFlow && FLOW_LINES.map(fl => (
+                        {showFlow && dynamicFlows.map(fl => (
                             <path
                                 key={fl.id}
                                 d={fl.d}
@@ -254,8 +376,8 @@ export default function VenueMap() {
                         ))}
 
                         {/* Incident markers */}
-                        {INCIDENTS.map(inc => {
-                            const color = INCIDENT_COLORS[inc.type];
+                        {dynamicIncidents.map(inc => {
+                            const color = INCIDENT_COLORS[inc.type] || '#fff';
                             return (
                                 <g key={inc.id}>
                                     {/* Pulsing outer ring */}
@@ -288,7 +410,7 @@ export default function VenueMap() {
                     </svg>
 
                     {/* Zone labels + clickable overlays */}
-                    {ZONES.map(zone => (
+                    {dynamicZones.map(zone => (
                         <div
                             key={zone.id}
                             onClick={() => setSelected(selected === zone.id ? null : zone.id)}
@@ -342,7 +464,7 @@ export default function VenueMap() {
                     ))}
 
                     {/* Gate badges */}
-                    {ZONES.flatMap(z => z.gates).map(gate => (
+                    {dynamicZones.flatMap(z => z.gates).map(gate => (
                         <div key={gate.id} style={{
                             position: 'absolute',
                             left: `${gate.x}%`, top: `${gate.y}%`,
@@ -359,7 +481,7 @@ export default function VenueMap() {
                     ))}
 
                     {/* Incident label tooltips */}
-                    {INCIDENTS.map(inc => (
+                    {dynamicIncidents.map(inc => (
                         <div key={`lbl-${inc.id}`} style={{
                             position: 'absolute',
                             left: `${inc.cx + 2.5}%`, top: `${inc.cy - 2}%`,

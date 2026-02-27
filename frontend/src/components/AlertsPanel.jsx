@@ -1,73 +1,6 @@
 import { useState, useEffect } from 'react';
-
-const ALERTS_DATA = [
-    {
-        id: 1,
-        severity: 'critical',
-        title: 'Crowd Crush Risk — Zone A1',
-        detail: 'Density exceeds 92%. Immediate dispersal required.',
-        zone: 'A1',
-        time: '2s ago',
-        icon: '🔴',
-        ai: 'AI recommends: redirect to Zone C1 via Gate 3',
-        acknowledged: false,
-    },
-    {
-        id: 2,
-        severity: 'critical',
-        title: 'Bottleneck — Gate 2 North',
-        detail: 'Entry rate 340 ppm. Exit blocked by maintenance barrier.',
-        zone: 'Gate-2N',
-        time: '45s ago',
-        icon: '🔴',
-        ai: 'AI recommends: open supplementary lane, deploy 4 marshals',
-        acknowledged: false,
-    },
-    {
-        id: 3,
-        severity: 'warning',
-        title: 'High Density — Zone B2',
-        detail: 'Crowd density at 78%. Approaching critical threshold.',
-        zone: 'B2',
-        time: '1m 12s ago',
-        icon: '🟡',
-        ai: 'AI recommends: monitor closely, pre-position medical team',
-        acknowledged: false,
-    },
-    {
-        id: 4,
-        severity: 'warning',
-        title: 'Unusual Movement — East Wing',
-        detail: 'Counter-flow detected. Possible panic or stampede precursor.',
-        zone: 'E-Wing',
-        time: '2m 30s ago',
-        icon: '🟡',
-        ai: 'AI recommends: activate PA announcement, guide crowd',
-        acknowledged: false,
-    },
-    {
-        id: 5,
-        severity: 'info',
-        title: 'Medical Incident — Section D',
-        detail: 'Person reported unconscious. Medical team en route.',
-        zone: 'D4',
-        time: '3m 15s ago',
-        icon: '🔵',
-        ai: 'Medical team ETA: 1m 45s',
-        acknowledged: true,
-    },
-    {
-        id: 6,
-        severity: 'safe',
-        title: 'Zone C1 Cleared',
-        detail: 'Density normalized. No further action required.',
-        zone: 'C1',
-        time: '5m ago',
-        icon: '🟢',
-        ai: 'Status resolved automatically',
-        acknowledged: true,
-    },
-];
+import axios from 'axios';
+import { io } from 'socket.io-client';
 
 const SEVERITY_STYLES = {
     critical: {
@@ -105,11 +38,82 @@ const SEVERITY_STYLES = {
     },
 };
 
+const getSeverity = (type) => {
+    if (!type) return 'info';
+    const t = type.toUpperCase();
+    if (t.includes('CRITICAL') || t.includes('COLLAPSE') || t.includes('FALL') || t.includes('SURGE') || t.includes('PANIC')) return 'critical';
+    if (t.includes('WARNING') || t.includes('COUNTER')) return 'warning';
+    if (t.includes('SAFE') || t.includes('CLEARED')) return 'safe';
+    return 'info';
+};
+
+const getIcon = (severity) => {
+    if (severity === 'critical') return '🔴';
+    if (severity === 'warning') return '🟡';
+    if (severity === 'safe') return '🟢';
+    return '🔵';
+};
+
+const mapAlert = (dbAlert) => {
+    const severity = getSeverity(dbAlert.type);
+
+    // Parse metadata safely (it might be a string if PG jsonb wasn't parsed, although pg handles it mostly)
+    let meta = dbAlert.metadata;
+    if (typeof meta === 'string') {
+        try { meta = JSON.parse(meta); } catch (e) { }
+    }
+
+    let detailStr = `Density: ${dbAlert.density || 'N/A'}`;
+    let aiStr = 'AI detected anomaly';
+
+    if (meta) {
+        if (meta.confidence) detailStr += ` — Confidence: ${(meta.confidence * 100).toFixed(1)}%`;
+        if (meta.details) aiStr = meta.details;
+    }
+
+    return {
+        id: dbAlert.id || Math.random().toString(),
+        severity: severity,
+        title: `${(dbAlert.type || 'UNKNOWN').replace(/_/g, ' ')}`,
+        detail: detailStr,
+        zone: dbAlert.zone || 'Unspecified',
+        time: new Date(dbAlert.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        icon: getIcon(severity),
+        ai: aiStr,
+        acknowledged: false,
+    };
+};
+
 export default function AlertsPanel() {
-    const [alerts, setAlerts] = useState(ALERTS_DATA);
+    const [alerts, setAlerts] = useState([]);
     const [filter, setFilter] = useState('all');
     const [expanded, setExpanded] = useState(null);
-    const [newAlert, setNewAlert] = useState(null);
+
+    useEffect(() => {
+        // Fetch historical data
+        const fetchHistory = async () => {
+            try {
+                const res = await axios.get('http://localhost:5000/api/alerts?limit=50');
+                if (res.data && Array.isArray(res.data)) {
+                    setAlerts(res.data.map(mapAlert));
+                }
+            } catch (err) {
+                console.error("Failed to fetch historical alerts:", err);
+            }
+        };
+        fetchHistory();
+
+        // Connect to Socket.IO
+        const socket = io('http://localhost:5000');
+        socket.on('new_alert', (newAlertData) => {
+            console.log("New live alert:", newAlertData);
+            setAlerts((prev) => [mapAlert(newAlertData), ...prev]);
+        });
+
+        return () => {
+            socket.disconnect();
+        };
+    }, []);
 
     const filtered = filter === 'all' ? alerts : alerts.filter(a => a.severity === filter);
 

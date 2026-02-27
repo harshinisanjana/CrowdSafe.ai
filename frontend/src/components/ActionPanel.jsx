@@ -131,7 +131,7 @@ export default function ActionPanel() {
                     const isPending = confirmPending === action.id;
                     const isExp = expanded === action.id;
                     return (
-                        <div key={action.id} style={{ marginBottom: '8px' }} className="fade-in-up" style={{ animationDelay: `${idx * 80}ms` }}>
+                        <div key={action.id} style={{ marginBottom: '8px', animationDelay: `${idx * 80}ms` }} className="fade-in-up">
                             <div
                                 style={{
                                     border: `1px solid ${isPending ? action.color : status ? 'rgba(52,199,89,0.4)' : 'var(--border-primary)'}`,

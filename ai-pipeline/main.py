@@ -1,66 +1,51 @@
-"""
-main.py
--------
-CrowdSafe AI – Real-time crowd analysis pipeline orchestrator.
-
-Wires together all pipeline modules:
-    VideoCapture → CrowdDetector → ZoneManager → FlowTracker
-    → HeatmapGenerator → BackendPublisher
-
-Also exposes a lightweight FastAPI server (background thread) with:
-    GET /           → pipeline status
-    GET /snapshot   → latest analysis JSON
-
-Usage examples:
-    python main.py                         # webcam (config.VIDEO_SOURCE)
-    python main.py --source 0              # webcam by index
-    python main.py --source crowd.mp4     # local video file
-    python main.py --source rtsp://...    # RTSP stream
-    python main.py --show                  # show OpenCV debug window
-    python main.py --mode rabbitmq         # override publisher mode
-"""
-
-import argparse
-import json
-import logging
-import sys
-import threading
-import time
-from datetime import datetime, timezone, timedelta
-from typing import Any, Dict, Optional
-
-import cv2
-import numpy as np
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
+<<<<<<< Updated upstream
+=======
+from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
+>>>>>>> Stashed changes
 import uvicorn
+import time
+import random
+import requests
+import threading
 
-import config
-from crowd_detector    import CrowdDetector
-from zone_manager      import ZoneManager
-from flow_tracker      import FlowTracker
-from heatmap_generator import HeatmapGenerator
-from backend_publisher import BackendPublisher
-from anomaly_detector  import AnomalyDetector
-from risk_scorer       import RiskScorer
+app = FastAPI()
 
-# ---------------------------------------------------------------------------
-# Logging
-# ---------------------------------------------------------------------------
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(name)s] %(levelname)s – %(message)s",
-    datefmt="%H:%M:%S",
-)
-logger = logging.getLogger("main")
+NODE_BACKEND_URL = "http://localhost:5000/api/alerts"
 
-# IST timezone offset (+05:30)
-IST = timezone(timedelta(hours=5, minutes=30))
+def mock_ai_camera_feed():
+    """Simulates AI analyzing video frames and sending critical alerts to the Node.js backend"""
+    print("[AI Pipeline] Mock camera analysis started...")
+    while True:
+        time.sleep(5) # Analyze every 5 seconds
+        
+        # Simulate a 30% chance of anomaly detection (Crowd Surge / Running)
+        if random.random() > 0.7:
+            alert = {
+                "type": "CROWD_SURGE",
+                "severity": "CRITICAL",
+                "zone": f"Gate {random.randint(1, 5)}",
+                "density": random.randint(85, 100)
+            }
+            try:
+                print(f"[AI] Detected anomaly, sending alert to Node server: {alert}")
+                requests.post(NODE_BACKEND_URL, json=alert)
+            except Exception as e:
+                print(f"[AI] Failed to reach Node backend. Ensure it is running on port 5000.")
 
+<<<<<<< Updated upstream
+@app.on_event("startup")
+def startup_event():
+    # Start the mock AI camera feed processor in the background
+    thread = threading.Thread(target=mock_ai_camera_feed, daemon=True)
+    thread.start()
+=======
 # ---------------------------------------------------------------------------
 # Shared state (pipeline → FastAPI endpoint)
 # ---------------------------------------------------------------------------
 _latest_analysis: Dict[str, Any] = {}
+_latest_frame_bytes: Optional[bytes] = None
 _pipeline_status: str = "initialising"
 _status_lock = threading.Lock()
 
@@ -71,11 +56,25 @@ def _update_shared(analysis: Dict[str, Any]) -> None:
         _latest_analysis  = analysis
         _pipeline_status  = "running"
 
+def _update_frame(frame_bytes: bytes) -> None:
+    global _latest_frame_bytes
+    with _status_lock:
+        _latest_frame_bytes = frame_bytes
+
 
 # ---------------------------------------------------------------------------
 # FastAPI status server
 # ---------------------------------------------------------------------------
 api_app = FastAPI(title="CrowdSafe AI", description="Real-time crowd analysis API")
+
+# Add CORS so React frontend can fetch the /snapshot data
+api_app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @api_app.get("/")
@@ -90,6 +89,26 @@ def get_snapshot():
         if not _latest_analysis:
             return JSONResponse({"error": "No analysis available yet."}, status_code=503)
         return _latest_analysis
+
+
+def frame_generator():
+    """Generator function that yields MJPEG byte chunks continuously."""
+    while True:
+        with _status_lock:
+            frame_bytes = _latest_frame_bytes
+        if frame_bytes is None:
+            time.sleep(0.1)
+            continue
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+        # Cap streaming rate slightly so we don't spam the network loop
+        time.sleep(0.04)
+
+
+@api_app.get("/video_feed")
+def video_feed():
+    """Endpoint serving an HTTP MJPEG stream (Motion JPEG)."""
+    return StreamingResponse(frame_generator(), media_type="multipart/x-mixed-replace; boundary=frame")
 
 
 def _start_api_server(host: str = "0.0.0.0", port: int = 8000) -> None:
@@ -163,11 +182,28 @@ class CrowdSafePipeline:
                 _update_shared(analysis)
 
                 # ── Publish to backend ───────────────────────────────
-                self.publisher.send(analysis)
+                risk_level = analysis.get("risk", {}).get("level", "SAFE")
+                if risk_level in ["WARNING", "CRITICAL"]:
+                    current_time = time.time()
+                    if not hasattr(self, "_last_alert_time") or (current_time - self._last_alert_time > 5.0):
+                        alert_payload = {
+                            "type": risk_level,
+                            "zone": "Main Venue",
+                            "density": analysis.get("total_people", 0),
+                            "metadata": analysis.get("risk", {})
+                        }
+                        self.publisher.send(alert_payload)
+                        self._last_alert_time = current_time
+
+                # ── Visualisation & Stream ───────────────────────────
+                vis = self._draw_annotations(frame, analysis)
+                ret_encode, buffer = cv2.imencode('.jpg', vis)
+                if ret_encode:
+                    _update_frame(buffer.tobytes())
 
                 # ── Debug display ────────────────────────────────────
                 if self.show_window:
-                    self._draw_debug(frame, analysis)
+                    cv2.imshow("CrowdSafe AI – Debug", vis)
                     key = cv2.waitKey(1) & 0xFF
                     if key == ord("q"):
                         break
@@ -253,8 +289,8 @@ class CrowdSafePipeline:
     # Debug visualisation
     # ------------------------------------------------------------------
 
-    def _draw_debug(self, frame: np.ndarray, analysis: Dict[str, Any]) -> None:
-        """Render annotated debug window."""
+    def _draw_annotations(self, frame: np.ndarray, analysis: Dict[str, Any]) -> np.ndarray:
+        """Render annotated output."""
         resized = cv2.resize(frame, (config.FRAME_WIDTH, config.FRAME_HEIGHT))
 
         # Detections
@@ -295,7 +331,7 @@ class CrowdSafePipeline:
         )
         cv2.putText(vis, banner, (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 1)
 
-        cv2.imshow("CrowdSafe AI – Debug", vis)
+        return vis
 
 
 # ---------------------------------------------------------------------------
@@ -353,7 +389,12 @@ def main() -> None:
         publisher_mode=mode,
     )
     pipeline.run()
+>>>>>>> Stashed changes
 
+@app.get("/")
+def read_root():
+    return {"status": "AI Pipeline is Active"}
 
 if __name__ == "__main__":
-    main()
+    # Start FastAPI server on port 8000
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
