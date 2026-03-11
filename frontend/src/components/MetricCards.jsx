@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
+const AI_URL = import.meta.env.VITE_AI_URL || 'http://localhost:8000';
+
 function useCountUp(target, duration = 1400) {
     const [count, setCount] = useState(0);
     useEffect(() => {
@@ -99,7 +101,7 @@ export default function MetricCards() {
     useEffect(() => {
         const interval = setInterval(async () => {
             try {
-                const res = await axios.get('http://localhost:8000/snapshot');
+                const res = await axios.get(`${AI_URL}/snapshot`);
                 const data = res.data;
                 if (!data || data.error) return;
 

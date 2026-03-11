@@ -59,7 +59,7 @@ FLOW_STABLE_THRESHOLD = 3.0  # pixels
 # Backend publisher
 # ---------------------------------------------------------------------------
 # Mode: "fastapi" | "rabbitmq" | "both" | "none" (silent, for local testing)
-PUBLISHER_MODE = "none"
+PUBLISHER_MODE = "fastapi"
 
 # FastAPI endpoint
 FASTAPI_URL     = "http://localhost:5000/api/alerts"

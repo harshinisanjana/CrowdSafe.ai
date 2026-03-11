@@ -1,0 +1,387 @@
+🚀 Backend running on port 5000
+❌ Error initializing database: AggregateError [ECONNREFUSED]: 
+    at /Users/sachinjeyakumar/collage/projects/hackathon/farm_management/innovision-farm-management/CrowdSafe.ai/backend/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.initDB (/Users/sachinjeyakumar/collage/projects/hackathon/farm_management/innovision-farm-management/CrowdSafe.ai/backend/db.js:31:5) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED ::1:5432
+        at createConnectionError (node:net:1677:14)
+        at afterConnectMultiple (node:net:1707:16) {
+      errno: -61,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 5432
+    },
+    Error: connect ECONNREFUSED 127.0.0.1:5432
+        at createConnectionError (node:net:1677:14)
+        at afterConnectMultiple (node:net:1707:16) {
+      errno: -61,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 5432
+    }
+  ]
+}
+💻 Frontend connected: PSljr2-SaKilXs2wAAAB
+💻 Frontend connected: d5yvB8Opsmv1v3HcAAAE
+⚠️ DB fetch failed; returning empty alerts list: 
+⚠️ DB fetch failed; returning empty alerts list: 
+⚠️ DB fetch failed; returning empty alerts list: 
+💻 Frontend connected: XGYXCpeMWeha701ZAAAH
+⚠️ DB fetch failed; returning empty alerts list: 
+🚨 Received AI Alert: {
+  type: 'WARNING',
+  zone: 'Main Venue',
+  density: 11,
+  metadata: {
+    score: 61,
+    level: 'WARNING',
+    factors: [
+      'PANIC anomaly detected (2x)',
+      'Multiple counter-flow individuals (2)'
+    ]
+  }
+}
+⚠️ DB insert failed; broadcasting alert without persistence: 
+🚨 Received AI Alert: {
+  type: 'WARNING',
+  zone: 'Main Venue',
+  density: 13,
+  metadata: {
+    score: 63,
+    level: 'WARNING',
+    factors: [
+      'PANIC anomaly detected (2x)',
+      'Multiple counter-flow individuals (2)'
+    ]
+  }
+}
+⚠️ DB insert failed; broadcasting alert without persistence: 
+🚨 Received AI Alert: {
+  type: 'WARNING',
+  zone: 'Main Venue',
+  density: 13,
+  metadata: {
+    score: 63,
+    level: 'WARNING',
+    factors: [
+      'PANIC anomaly detected (2x)',
+      'Multiple counter-flow individuals (2)'
+    ]
+  }
+}
+⚠️ DB insert failed; broadcasting alert without persistence: 
+🚨 Received AI Alert: {
+  type: 'WARNING',
+  zone: 'Main Venue',
+  density: 11,
+  metadata: {
+    score: 61,
+    level: 'WARNING',
+    factors: [
+      'PANIC anomaly detected (5x)',
+      'Multiple counter-flow individuals (5)'
+    ]
+  }
+}
+⚠️ DB insert failed; broadcasting alert without persistence: 
+🚨 Received AI Alert: {
+  type: 'WARNING',
+  zone: 'Main Venue',
+  density: 12,
+  metadata: {
+    score: 62,
+    level: 'WARNING',
+    factors: [
+      'PANIC anomaly detected (2x)',
+      'Multiple counter-flow individuals (2)'
+    ]
+  }
+}
+⚠️ DB insert failed; broadcasting alert without persistence: 
+🚨 Received AI Alert: {
+  type: 'WARNING',
+  zone: 'Main Venue',
+  density: 12,
+  metadata: {
+    score: 62,
+    level: 'WARNING',
+    factors: [
+      'PANIC anomaly detected (6x)',
+      'Multiple counter-flow individuals (6)'
+    ]
+  }
+}
+⚠️ DB insert failed; broadcasting alert without persistence: 
+🚨 Received AI Alert: {
+  type: 'WARNING',
+  zone: 'Main Venue',
+  density: 12,
+  metadata: {
+    score: 62,
+    level: 'WARNING',
+    factors: [
+      'PANIC anomaly detected (4x)',
+      'Multiple counter-flow individuals (4)'
+    ]
+  }
+}
+⚠️ DB insert failed; broadcasting alert without persistence: 
+🚨 Received AI Alert: {
+  type: 'WARNING',
+  zone: 'Main Venue',
+  density: 13,
+  metadata: {
+    score: 63,
+    level: 'WARNING',
+    factors: [
+      'PANIC anomaly detected (2x)',
+      'Multiple counter-flow individuals (2)'
+    ]
+  }
+}
+⚠️ DB insert failed; broadcasting alert without persistence: 
+🚨 Received AI Alert: {
+  type: 'WARNING',
+  zone: 'Main Venue',
+  density: 12,
+  metadata: {
+    score: 62,
+    level: 'WARNING',
+    factors: [
+      'PANIC anomaly detected (4x)',
+      'SURGE anomaly detected (1x)',
+      'Multiple counter-flow individuals (4)'
+    ]
+  }
+}
+⚠️ DB insert failed; broadcasting alert without persistence: 
+🚨 Received AI Alert: {
+  type: 'WARNING',
+  zone: 'Main Venue',
+  density: 12,
+  metadata: {
+    score: 62,
+    level: 'WARNING',
+    factors: [
+      'PANIC anomaly detected (3x)',
+      'Multiple counter-flow individuals (3)'
+    ]
+  }
+}
+⚠️ DB insert failed; broadcasting alert without persistence: 
+🚨 Received AI Alert: {
+  type: 'WARNING',
+  zone: 'Main Venue',
+  density: 11,
+  metadata: {
+    score: 61,
+    level: 'WARNING',
+    factors: [
+      'PANIC anomaly detected (2x)',
+      'Multiple counter-flow individuals (2)'
+    ]
+  }
+}
+⚠️ DB insert failed; broadcasting alert without persistence: 
+🚨 Received AI Alert: {
+  type: 'WARNING',
+  zone: 'Main Venue',
+  density: 13,
+  metadata: {
+    score: 63,
+    level: 'WARNING',
+    factors: [
+      'PANIC anomaly detected (2x)',
+      'Multiple counter-flow individuals (2)'
+    ]
+  }
+}
+⚠️ DB insert failed; broadcasting alert without persistence: 
+🚨 Received AI Alert: {
+  type: 'WARNING',
+  zone: 'Main Venue',
+  density: 12,
+  metadata: {
+    score: 62,
+    level: 'WARNING',
+    factors: [
+      'PANIC anomaly detected (2x)',
+      'Multiple counter-flow individuals (2)'
+    ]
+  }
+}
+⚠️ DB insert failed; broadcasting alert without persistence: 
+🚨 Received AI Alert: {
+  type: 'WARNING',
+  zone: 'Main Venue',
+  density: 11,
+  metadata: {
+    score: 61,
+    level: 'WARNING',
+    factors: [
+      'PANIC anomaly detected (2x)',
+      'Multiple counter-flow individuals (2)'
+    ]
+  }
+}
+⚠️ DB insert failed; broadcasting alert without persistence: 
+🚨 Received AI Alert: {
+  type: 'WARNING',
+  zone: 'Main Venue',
+  density: 12,
+  metadata: {
+    score: 62,
+    level: 'WARNING',
+    factors: [
+      'PANIC anomaly detected (4x)',
+      'Multiple counter-flow individuals (4)'
+    ]
+  }
+}
+⚠️ DB insert failed; broadcasting alert without persistence: 
+🚨 Received AI Alert: {
+  type: 'WARNING',
+  zone: 'Main Venue',
+  density: 11,
+  metadata: {
+    score: 61,
+    level: 'WARNING',
+    factors: [
+      'PANIC anomaly detected (2x)',
+      'Multiple counter-flow individuals (2)'
+    ]
+  }
+}
+⚠️ DB insert failed; broadcasting alert without persistence: 
+🚨 Received AI Alert: {
+  type: 'WARNING',
+  zone: 'Main Venue',
+  density: 13,
+  metadata: {
+    score: 63,
+    level: 'WARNING',
+    factors: [
+      'PANIC anomaly detected (2x)',
+      'SURGE anomaly detected (1x)',
+      'Multiple counter-flow individuals (2)'
+    ]
+  }
+}
+⚠️ DB insert failed; broadcasting alert without persistence: 
+🚨 Received AI Alert: {
+  type: 'WARNING',
+  zone: 'Main Venue',
+  density: 13,
+  metadata: {
+    score: 63,
+    level: 'WARNING',
+    factors: [
+      'PANIC anomaly detected (2x)',
+      'Multiple counter-flow individuals (2)'
+    ]
+  }
+}
+⚠️ DB insert failed; broadcasting alert without persistence: 
+🚨 Received AI Alert: {
+  type: 'WARNING',
+  zone: 'Main Venue',
+  density: 13,
+  metadata: {
+    score: 63,
+    level: 'WARNING',
+    factors: [
+      'PANIC anomaly detected (2x)',
+      'Multiple counter-flow individuals (2)'
+    ]
+  }
+}
+⚠️ DB insert failed; broadcasting alert without persistence: 
+🚨 Received AI Alert: {
+  type: 'WARNING',
+  zone: 'Main Venue',
+  density: 11,
+  metadata: {
+    score: 61,
+    level: 'WARNING',
+    factors: [
+      'PANIC anomaly detected (2x)',
+      'Multiple counter-flow individuals (2)'
+    ]
+  }
+}
+⚠️ DB insert failed; broadcasting alert without persistence: 
+🚨 Received AI Alert: {
+  type: 'WARNING',
+  zone: 'Main Venue',
+  density: 11,
+  metadata: {
+    score: 61,
+    level: 'WARNING',
+    factors: [
+      'PANIC anomaly detected (6x)',
+      'Multiple counter-flow individuals (6)'
+    ]
+  }
+}
+⚠️ DB insert failed; broadcasting alert without persistence: 
+🚨 Received AI Alert: {
+  type: 'WARNING',
+  zone: 'Main Venue',
+  density: 12,
+  metadata: {
+    score: 62,
+    level: 'WARNING',
+    factors: [
+      'PANIC anomaly detected (8x)',
+      'Multiple counter-flow individuals (8)'
+    ]
+  }
+}
+⚠️ DB insert failed; broadcasting alert without persistence: 
+🚨 Received AI Alert: {
+  type: 'WARNING',
+  zone: 'Main Venue',
+  density: 11,
+  metadata: {
+    score: 61,
+    level: 'WARNING',
+    factors: [
+      'PANIC anomaly detected (5x)',
+      'Multiple counter-flow individuals (5)'
+    ]
+  }
+}
+⚠️ DB insert failed; broadcasting alert without persistence: 
+🚨 Received AI Alert: {
+  type: 'WARNING',
+  zone: 'Main Venue',
+  density: 11,
+  metadata: {
+    score: 61,
+    level: 'WARNING',
+    factors: [
+      'PANIC anomaly detected (3x)',
+      'Multiple counter-flow individuals (3)'
+    ]
+  }
+}
+⚠️ DB insert failed; broadcasting alert without persistence: 
+🚨 Received AI Alert: {
+  type: 'WARNING',
+  zone: 'Main Venue',
+  density: 11,
+  metadata: {
+    score: 61,
+    level: 'WARNING',
+    factors: [
+      'PANIC anomaly detected (2x)',
+      'Multiple counter-flow individuals (2)'
+    ]
+  }
+}
+⚠️ DB insert failed; broadcasting alert without persistence: 
+🔴 Frontend disconnected: XGYXCpeMWeha701ZAAAH

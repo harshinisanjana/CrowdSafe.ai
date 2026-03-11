@@ -71,9 +71,9 @@ export default function App() {
       }}>
         <div style={{ display: 'flex', gap: '20px' }}>
           {[
-            { l: 'Venue', v: 'Indira Gandhi Stadium' },
-            { l: 'Event', v: 'National Sports Finals 2026' },
-            { l: 'Capacity', v: '25,000' },
+            { l: 'Venue', v: 'Test Venue' },
+            { l: 'Event', v: 'CrowdSafe AI Demo' },
+            { l: 'Capacity', v: 'Configured in System' },
           ].map(({ l, v }) => (
             <div key={l} style={{ display: 'flex', gap: '5px' }}>
               <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{l}:</span>

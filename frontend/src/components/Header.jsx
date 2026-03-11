@@ -142,11 +142,11 @@ export default function Header({ systemStatus = 'ELEVATED', alertCount = 7 }) {
 
                     <div style={{ width: 1, height: 28, background: 'var(--border-glow)' }} />
 
-                    {/* Venue info */}
+                    {/* Venue info (test venue for demo) */}
                     <div style={{ fontSize: 9, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                         <div style={{ color: 'var(--text-muted)', fontSize: 8, letterSpacing: '2px', marginBottom: 1 }}>VENUE</div>
-                        <div style={{ fontWeight: 600 }}>Indira Gandhi Stadium</div>
-                        <div style={{ color: 'var(--text-muted)' }}>National Sports Finals 2026</div>
+                        <div style={{ fontWeight: 600 }}>Test Venue</div>
+                        <div style={{ color: 'var(--text-muted)' }}>Internal Monitoring Scenario</div>
                     </div>
                 </div>
 

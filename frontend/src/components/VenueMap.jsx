@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
+const AI_URL = import.meta.env.VITE_AI_URL || 'http://localhost:8000';
+
 // Named zones — Zone A (North Entry), Zone B (Main Floor), Zone C (Stage), Zone D (South)
 const ZONES = [
     {
@@ -118,7 +120,7 @@ export default function VenueMap() {
     useEffect(() => {
         const interval = setInterval(async () => {
             try {
-                const res = await axios.get('http://localhost:8000/snapshot');
+                const res = await axios.get(`${AI_URL}/snapshot`);
                 if (res.data) {
                     setLiveData(res.data);
                     if (res.data.heatmap_matrix) {
@@ -213,12 +215,12 @@ export default function VenueMap() {
         if (liveData) {
             // Distribute the total AI tracked count across zones proportionally as a demo mapping
             const total = liveData.total_people || 0;
-            const globalRisk = liveData.risk_score || 0;
+            const globalRiskScore = liveData.risk?.score || 0; // 0-100
 
-            if (zone.id === 'A') { crowd = Math.round(total * 0.4); risk = globalRisk > 0.8 ? 'critical' : 'warning'; }
-            if (zone.id === 'B') { crowd = Math.round(total * 0.3); risk = globalRisk > 0.6 ? 'warning' : 'safe'; }
+            if (zone.id === 'A') { crowd = Math.round(total * 0.4); risk = globalRiskScore >= 81 ? 'critical' : globalRiskScore >= 61 ? 'warning' : 'safe'; }
+            if (zone.id === 'B') { crowd = Math.round(total * 0.3); risk = globalRiskScore >= 61 ? 'warning' : 'safe'; }
             if (zone.id === 'C') { crowd = Math.round(total * 0.2); risk = 'safe'; }
-            if (zone.id === 'D') { crowd = Math.round(total * 0.1); risk = globalRisk > 0.9 ? 'warning' : 'safe'; }
+            if (zone.id === 'D') { crowd = Math.round(total * 0.1); risk = globalRiskScore >= 61 ? 'warning' : 'safe'; }
         }
         return { ...zone, crowd, risk };
     });
@@ -536,8 +538,8 @@ export default function VenueMap() {
                         {[
                             { l: 'Crowd Count', v: selectedZone.crowd.toLocaleString() + ' pax' },
                             { l: 'Risk Status', v: selectedZone.risk.toUpperCase() },
-                            { l: 'Thermal Hotspots', v: `${selectedZone.hotspots.length} detected` },
-                            { l: 'Peak Intensity', v: `${Math.round(Math.max(...selectedZone.hotspots.map(h => h.intensity)) * 100)}%` },
+                            { l: 'Thermal Hotspots', v: `${(selectedZone.hotspots?.length || 0)} detected` },
+                            { l: 'Peak Intensity', v: `${selectedZone.hotspots?.length ? Math.round(Math.max(...selectedZone.hotspots.map(h => h.intensity || 0)) * 100) : 0}%` },
                         ].map(({ l, v }) => (
                             <div key={l} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', borderBottom: '1px solid var(--border-primary)', paddingBottom: '5px' }}>
                                 <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{l}</span>

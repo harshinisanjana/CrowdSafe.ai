@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 
+const AI_URL = import.meta.env.VITE_AI_URL || 'http://localhost:8000';
+
 // The AI pipeline uses a 10x10 grid by default
 const COLS = 10;
 const ROWS = 10;
@@ -43,7 +45,7 @@ export default function ThermalPanel() {
     useEffect(() => {
         const interval = setInterval(async () => {
             try {
-                const res = await axios.get('http://localhost:8000/snapshot');
+                const res = await axios.get(`${AI_URL}/snapshot`);
                 if (res.data && res.data.heatmap_matrix) {
                     const matrix2D = res.data.heatmap_matrix; // 10x10 integer array
 

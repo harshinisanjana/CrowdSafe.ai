@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+
 const SEVERITY_STYLES = {
     critical: {
         border: 'rgba(255,45,85,0.5)',
@@ -93,7 +95,7 @@ export default function AlertsPanel() {
         // Fetch historical data
         const fetchHistory = async () => {
             try {
-                const res = await axios.get('http://localhost:5000/api/alerts?limit=50');
+                const res = await axios.get(`${BACKEND_URL}/api/alerts?limit=50`);
                 if (res.data && Array.isArray(res.data)) {
                     setAlerts(res.data.map(mapAlert));
                 }
@@ -104,7 +106,7 @@ export default function AlertsPanel() {
         fetchHistory();
 
         // Connect to Socket.IO
-        const socket = io('http://localhost:5000');
+        const socket = io(BACKEND_URL);
         socket.on('new_alert', (newAlertData) => {
             console.log("New live alert:", newAlertData);
             setAlerts((prev) => [mapAlert(newAlertData), ...prev]);

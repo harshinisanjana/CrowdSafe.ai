@@ -33,7 +33,7 @@ class BackendPublisher:
 
     def __init__(
         self,
-        mode: Literal["fastapi", "rabbitmq", "both"] = config.PUBLISHER_MODE,
+        mode: Literal["fastapi", "rabbitmq", "both", "none"] = config.PUBLISHER_MODE,
         fastapi_url: str    = config.FASTAPI_URL,
         fastapi_timeout: int = config.FASTAPI_TIMEOUT,
         rabbitmq_host: str  = config.RABBITMQ_HOST,
@@ -43,7 +43,7 @@ class BackendPublisher:
     ) -> None:
         """
         Args:
-            mode:             Transport mode – "fastapi" | "rabbitmq" | "both".
+            mode:             Transport mode – "fastapi" | "rabbitmq" | "both" | "none".
             fastapi_url:      Full URL of the FastAPI POST endpoint.
             fastapi_timeout:  Request timeout in seconds.
             rabbitmq_host:    RabbitMQ broker hostname.
