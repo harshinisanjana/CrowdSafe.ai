@@ -4,6 +4,32 @@
 
 ---
 
+## 📸 Screenshots
+
+<p align="center">
+  <img src="assets/dashboard.png" width="100%" alt="Main Dashboard Dashboard">
+</p>
+<p align="center">
+  <em>Live Crowd Monitoring Dashboard featuring Total Crowd, Active Anomalies, Crowd Flow, and Live Venue Map.</em>
+</p>
+
+<p align="center">
+  <img src="assets/heatmap.png" width="100%" alt="Spatial Heatmap">
+</p>
+<p align="center">
+  <em>Real-time Spatial Heatmap tracking crowd density distribution.</em>
+</p>
+
+<p align="center">
+  <img src="assets/alert_split_view.png" width="49%" alt="Live Venue Map Alert">
+  <img src="assets/cctv_debug.png" width="49%" alt="AI CCTV Debug View">
+</p>
+<p align="center">
+  <em>Live Venue Map with alerts (left) & AI Pipeline Debug View displaying YOLOv8 tracking and warnings (right).</em>
+</p>
+
+---
+
 ## 🏗️ Architecture
 
 ```
